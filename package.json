@@ -16,5 +16,8 @@
   "bugs": {
     "url": "https://github.com/marcogamal/tinyapp/issues"
   },
-  "homepage": "https://github.com/marcogamal/tinyapp#readme"
+  "homepage": "https://github.com/marcogamal/tinyapp#readme",
+  "dependencies": {
+    "express": "^4.17.3"
+  }
 }
