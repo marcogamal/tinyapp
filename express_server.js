@@ -29,6 +29,7 @@ app.get("/urls/new", (req, res) => {
   res.render("urls_new")
 })
 
+// URL path with urls_index as the template
 app.get("/urls", (req,res) => {
   const templateVars = { urls: urlDatabase};
   res.render("urls_index", templateVars)
@@ -73,10 +74,16 @@ app.get("/fetch", (req, res) => {
   res.send(`a = ${a}`);
  });
 
- app.post("/urls", (req,res) => {
+app.post("/urls", (req,res) => {
    console.log(req.body)
    res.send("OK")
  })
+
+ //Delete button routing on server
+ app.post("/urls/:shortURL/delete", (req, res) => {
+    delete urlDatabase[req.params.shortURL];
+    return res.redirect("/urls");
+});
 
  // requests to the endpoint "/u/:shortURL" will redirect to its longURL 
  app.get("/u/:shortURL", (req, res) => {
