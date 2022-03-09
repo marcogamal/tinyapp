@@ -23,6 +23,40 @@ characters.length));
  return result;
 }
 
+//users
+const users = { 
+  "Asta": {
+    id: "Asta", 
+    email: "asta@asta.com", 
+    password: "asta1"
+  },
+ "kio": {
+    id: "kio", 
+    email: "kio@kio.com", 
+    password: "kio1"
+  }
+}
+
+const findUserByEmail = (email) => {
+  for (let userId in users) {
+    const user = users[userId];
+    if (user.email === email) {
+      return user
+    }
+  }
+  return null
+}
+const addNewUser = function (email, password, users) {
+  let userId = generateRandomString();
+  users[userId] = {
+    id: userId,
+    email: email,
+    password: password
+  };
+  return userId;
+}
+
+// GET or POST
 app.get("/", (req, res) => {
   res.send("Hello!");
 });
@@ -112,10 +146,31 @@ app.post("/logout", (req, res) => {
 
 //register
 app.get("/register", (req,res) => {
-  res.render("urls_register")
+  const templateVars = { 
+    username: req.cookies["username"],
+    shortURL: req.params.shortURL, 
+    longURL: urlDatabase[req.params.shortURL] 
+  };
+  res.render("urls_register", templateVars)
 })
 
+app.post("/register", (req,res) => {
+  const email = req.body.email.trim()
+  const password = req.body.password.trim()
+  const user = findUserByEmail(email)
+  if (user) {
+    return res.status(400).send("Name is not allowed or User already exist")
+  }
+  if (email === "" || password === "") {
+    return res.status(400).send("Invalid credentials")
+  }
+  const userId = addNewUser(email, password, users)
+  res.cookie("user_id", userId)
+res.redirect("/urls")
+})
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
+
+
