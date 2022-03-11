@@ -127,17 +127,12 @@ app.post("/urls/:shortURL", (req, res) => {
 });
 
 
-app.get("/urls.json", (req, res) => {
-  res.json(urlDatabase);
-});
-
-app.post("/urls", (req, res) => {
-  console.log(req.body);
-  res.send("OK");
-});
-
 //Delete button routing on server
 app.post("/urls/:shortURL/delete", (req, res) => {
+  const userId = req.cookies["user_id"]
+  if (!userId) {
+    return res.status(400).send("Please login to designated account to continue")
+  }
   delete urlDatabase[req.params.shortURL];
   return res.redirect("/urls");
 });
