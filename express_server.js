@@ -11,11 +11,11 @@ app.use(cookieParser());
 const urlDatabase = {
   b6UTxQ: {
         longURL: "https://www.tsn.ca",
-        userID: "aJ48lW"
+        userId: "aJ48lW"
     },
     i3BoGr: {
         longURL: "https://www.google.ca",
-        userID: "aJ48lW"
+        userId: "aJ48lW"
     }
 };
 
@@ -62,6 +62,17 @@ const addNewUser = function (email, password, users) {
   return userId;
 };
 
+const urlsForUser = function(id) {
+  const filterId = {};
+  const keys = Object.keys(urlDatabase)
+  for(let key of keys) {
+    if (urlDatabase[key].userId === id) {
+      filterId[key] = url;
+    }
+  }
+  return filterId
+}
+
 // GET or POST
 app.get("/", (req, res) => {
   res.redirect("/urls");
@@ -80,6 +91,11 @@ app.get("/urls/new", (req, res) => {
 
 // URL path with urls_index as the template
 app.get("/urls", (req, res) => {
+  const userId = req.cookies["user_id"]
+  const user = users[userId]
+  if (!user) {
+    return res.status(400).send("Please <a href='/login'>login</a> to access the page")
+  }
   const templateVars = {
     user: users[req.cookies["user_id"]],
     urls: urlDatabase,
