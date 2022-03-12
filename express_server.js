@@ -3,6 +3,7 @@ const app = express();
 const PORT = 8080;
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
+const bcrypt = require("bcryptjs");
 
 app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -10,13 +11,13 @@ app.use(cookieParser());
 
 const urlDatabase = {
   b6UTxQ: {
-        longURL: "https://www.tsn.ca",
-        userId: "aJ48lW"
-    },
-    i3BoGr: {
-        longURL: "https://www.google.ca",
-        userId: "aJ48lW"
-    }
+    longURL: "https://www.tsn.ca",
+    userId: "aJ48lW",
+  },
+  i3BoGr: {
+    longURL: "https://www.google.ca",
+    userId: "aJ48lW",
+  },
 };
 
 function generateRandomString() {
@@ -52,26 +53,28 @@ const findUserByEmail = (email) => {
   }
   return null;
 };
+
 const addNewUser = function (email, password, users) {
+  const hashedPassword = bcrypt.hashSync(password, 10);
   let userId = generateRandomString();
   users[userId] = {
     id: userId,
     email: email,
-    password: password,
+    password: hashedPassword,
   };
   return userId;
 };
 
-const urlsForUser = function(id) {
+const urlsForUser = function (id) {
   const filterId = {};
-  const keys = Object.keys(urlDatabase)
-  for(let key of keys) {
+  const keys = Object.keys(urlDatabase);
+  for (let key of keys) {
     if (urlDatabase[key].userId === id) {
       filterId[key] = url;
     }
   }
-  return filterId
-}
+  return filterId;
+};
 
 // GET or POST
 app.get("/", (req, res) => {
@@ -91,10 +94,12 @@ app.get("/urls/new", (req, res) => {
 
 // URL path with urls_index as the template
 app.get("/urls", (req, res) => {
-  const userId = req.cookies["user_id"]
-  const user = users[userId]
+  const userId = req.cookies["user_id"];
+  const user = users[userId];
   if (!user) {
-    return res.status(400).send("Please <a href='/login'>login</a> to access the page")
+    return res
+      .status(400)
+      .send("Please <a href='/login'>login</a> to access the page");
   }
   const templateVars = {
     user: users[req.cookies["user_id"]],
@@ -126,12 +131,13 @@ app.post("/urls/:shortURL", (req, res) => {
   urlDatabase[req.params.shortURL].longURL = req.body.longURL;
 });
 
-
 //Delete button routing on server
 app.post("/urls/:shortURL/delete", (req, res) => {
-  const userId = req.cookies["user_id"]
+  const userId = req.cookies["user_id"];
   if (!userId) {
-    return res.status(400).send("Please login to designated account to continue")
+    return res
+      .status(400)
+      .send("Please login to designated account to continue");
   }
   delete urlDatabase[req.params.shortURL];
   return res.redirect("/urls");
@@ -143,43 +149,6 @@ app.get("/u/:shortURL", (req, res) => {
     const fullURL = urlDatabase[req.params.shortURL].longURL;
     return res.redirect(fullURL);
   }
-});
-
-//login using express cookies
-app.get("/login", (req, res) => {
-  const templateVars = {
-    user: users[req.cookies["user_id"]],
-    shortURL: req.params.shortURL,
-    longURL: urlDatabase[req.params.shortURL],
-  };
-  res.render("urls_login", templateVars);
-});
-
-app.post("/login", (req, res) => {
-  console.log("================================");
-  const email = req.body.email.trim();
-  const password = req.body.password.trim();
-  if (!email || !password) {
-    return res
-      .status(403)
-      .send("Invalid credentials - please fill the correct email or password");
-  }
-  const user = findUserByEmail(email);
-  console.log("User is", user);
-  if (!user || user.password !== password) {
-    return res
-      .status(403)
-      .send("Invalid credentials - please fix your username or password");
-  }
-  res.cookie("user", { id: user.id, email: user.email });
-  res.cookie("user_id", user.id);
-  res.redirect("/urls");
-});
-
-//logout
-app.post("/logout", (req, res) => {
-  res.clearCookie("user_id", req.body.userId);
-  res.redirect("/urls");
 });
 
 //register
@@ -204,6 +173,42 @@ app.post("/register", (req, res) => {
   }
   const userId = addNewUser(email, password, users);
   res.cookie("user_id", userId);
+  res.redirect("/urls");
+});
+
+//login using express cookies
+app.get("/login", (req, res) => {
+  const templateVars = {
+    user: users[req.cookies["user_id"]],
+    shortURL: req.params.shortURL,
+    longURL: urlDatabase[req.params.shortURL],
+  };
+  res.render("urls_login", templateVars);
+});
+
+app.post("/login", (req, res) => {
+  const email = req.body.email.trim();
+  const password = req.body.password.trim();
+  if (!email || !password) {
+    return res
+      .status(403)
+      .send("Invalid credentials - please fill the correct email or password");
+  }
+  const user = findUserByEmail(email);
+  console.log("User is", user);
+  if (!user || !bcrypt.compareSync(password, hashedPassword)) {
+    return res
+      .status(403)
+      .send("Invalid credentials - please fix your username or password");
+  }
+  res.cookie("user", { id: user.id, email: user.email });
+  res.cookie("user_id", user.id);
+  res.redirect("/urls");
+});
+
+//logout
+app.post("/logout", (req, res) => {
+  res.clearCookie("user_id", req.body.userId);
   res.redirect("/urls");
 });
 
