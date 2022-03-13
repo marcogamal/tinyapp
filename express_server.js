@@ -5,6 +5,7 @@ const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
 const bcrypt = require("bcryptjs");
 const cookieSession = require("cookie-session");
+const getUserByEmail = require("./helpers")
 
 app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -53,16 +54,6 @@ function generateRandomString() {
   }
   return result;
 }
-
-const findUserByEmail = (email) => {
-  for (let userId in users) {
-    const user = users[userId];
-    if (user.email === email) {
-      return user;
-    }
-  }
-  return null;
-};
 
 const addNewUser = function (email, password, users) {
   const hashedPassword = bcrypt.hashSync(password, 10);
@@ -179,7 +170,7 @@ app.get("/register", (req, res) => {
 app.post("/register", (req, res) => {
   const email = req.body.email.trim();
   const password = req.body.password.trim();
-  const user = findUserByEmail(email);
+  const user = getUserByEmail(email, users);
   const hashedPassword = bcrypt.hashSync(password);
   if (user) {
     return res.status(400).send("Name is not allowed or User already exist");
@@ -211,7 +202,7 @@ app.post("/login", (req, res) => {
       .status(403)
       .send("Invalid credentials - please fill the correct email or password");
   }
-  const user = findUserByEmail(email);
+  const user = getUserByEmail(email, users);
   console.log("User is", user);
   if (!user || !bcrypt.compareSync(password, user.password)) {
     return res
