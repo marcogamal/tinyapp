@@ -5,7 +5,7 @@ const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
 const bcrypt = require("bcryptjs");
 const cookieSession = require("cookie-session");
-const getUserByEmail = require("./helpers")
+const getUserByEmail = require("./helpers");
 
 app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -20,7 +20,7 @@ app.use(
   })
 );
 
-//users
+//users & database
 const users = {
   Asta: {
     id: "Asta",
@@ -45,6 +45,7 @@ const urlDatabase = {
   },
 };
 
+//functions
 function generateRandomString() {
   let result = "";
   let characters =
@@ -128,13 +129,21 @@ app.get("/urls/:shortURL", (req, res) => {
   const templateVars = {
     user: users[req.session.user_id],
     shortURL: req.params.shortURL,
-    longURL: urlDatabase[req.params.shortURL],
+    longURL: urlDatabase[req.params.shortURL].longURL,
   };
   res.render("urls_show", templateVars);
 });
 
+//edit
 app.post("/urls/:shortURL", (req, res) => {
+  const userId = req.session.user_id;
+  if (!userId) {
+    return res
+      .status(400)
+      .send("Please login to designated account to continue");
+  }
   urlDatabase[req.params.shortURL].longURL = req.body.longURL;
+  res.redirect("/urls");
 });
 
 //Delete button routing on server
@@ -183,7 +192,7 @@ app.post("/register", (req, res) => {
   res.redirect("/urls");
 });
 
-//login using express cookies
+//login
 app.get("/login", (req, res) => {
   const templateVars = {
     user: users[req.session.user_id],
@@ -219,6 +228,7 @@ app.post("/logout", (req, res) => {
   res.redirect("/urls");
 });
 
+//listen
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
