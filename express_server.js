@@ -5,7 +5,9 @@ const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
 const bcrypt = require("bcryptjs");
 const cookieSession = require("cookie-session");
-const getUserByEmail = require("./helpers");
+const {getUserByEmail, addNewUser, urlsForUser, generateRandomString} = require("./helpers");
+const urlDatabase = require("./database");
+const users = require("./users");
 
 app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -20,70 +22,14 @@ app.use(
   })
 );
 
-//users & database
-const users = {
-  Asta: {
-    id: "Asta",
-    email: "asta@asta.com",
-    password: bcrypt.hashSync("asta1"),
-  },
-  kio: {
-    id: "kio",
-    email: "kio@kio.com",
-    password: bcrypt.hashSync("kio1"),
-  },
-};
-
-const urlDatabase = {
-  b6UTxQ: {
-    longURL: "https://www.tsn.ca",
-    userId: "aJ48lW",
-  },
-  i3BoGr: {
-    longURL: "https://www.google.ca",
-    userId: "aJ48lW",
-  },
-};
-
-//functions
-function generateRandomString() {
-  let result = "";
-  let characters =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  for (var i = 0; i < 6; i++) {
-    result += characters.charAt(Math.floor(Math.random() * characters.length));
-  }
-  return result;
-}
-
-const addNewUser = function (email, password, users) {
-  const hashedPassword = bcrypt.hashSync(password, 10);
-  let userId = generateRandomString();
-  users[userId] = {
-    id: userId,
-    email: email,
-    password: hashedPassword,
-  };
-  return userId;
-};
-
-const urlsForUser = function (id) {
-  const filterId = {};
-  const keys = Object.keys(urlDatabase);
-  for (let key of keys) {
-    if (urlDatabase[key].userId === id) {
-      filterId[key] = url;
-    }
-  }
-  return filterId;
-};
-
 // GET or POST
 app.get("/", (req, res) => {
   if (req.session.user_id) {
     return res.redirect("/urls");
   } else {
-    return res.redirect("/login");
+    return res
+      .status(400)
+      .send("Please <a href='/login'>login</a> to access the page");
   }
 });
 
@@ -110,40 +56,54 @@ app.get("/urls", (req, res) => {
   const urls = urlsForUser(user.id);
   const templateVars = {
     user: users[req.session.user_id],
-    urls: urlDatabase,
+    urls: urls,
   };
   res.render("urls_index", templateVars);
 });
 
 app.post("/urls", (req, res) => {
   const randomShort = generateRandomString();
-  urlDatabase[randomShort] = {
-    shortURL: randomShort,
-    longURL: req.body.longURL,
-  };
-  res.redirect(`/urls/${randomShort}`);
+  if (users[req.session["user_id"]]) {
+    urlDatabase[randomShort] = {
+      shortURL: randomShort,
+      longURL: req.body.longURL,
+      userId: req.session.user_id,
+    };
+    res.redirect(`/urls/${randomShort}`);
+  }
 });
 
 // URL/shortURL path with urls_show as the template
 app.get("/urls/:shortURL", (req, res) => {
-  const templateVars = {
-    user: users[req.session.user_id],
-    shortURL: req.params.shortURL,
-    longURL: urlDatabase[req.params.shortURL].longURL,
-  };
-  res.render("urls_show", templateVars);
+  const userId = req.session.user_id;
+  const user = users[userId];
+  if (userId) {
+    const templateVars = {
+      user: user,
+      shortURL: req.params.shortURL,
+      longURL: urlDatabase[req.params.shortURL].longURL,
+    };
+    res.render("urls_show", templateVars);
+  } else {
+    return res
+      .status(400)
+      .send(
+        "<h1>Sorry!</h1> The URL does not exist or not assiciated with the account"
+      );
+  }
 });
 
 //edit
 app.post("/urls/:shortURL", (req, res) => {
   const userId = req.session.user_id;
-  if (!userId) {
+  if ((urlDatabase[req.params.shortURL].userId = req.session.user_id)) {
+    urlDatabase[req.params.shortURL].longURL = req.body.longURL;
+    res.redirect("/urls");
+  } else {
     return res
       .status(400)
       .send("Please login to designated account to continue");
   }
-  urlDatabase[req.params.shortURL].longURL = req.body.longURL;
-  res.redirect("/urls");
 });
 
 //Delete button routing on server
